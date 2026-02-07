@@ -1,0 +1,38 @@
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create Project
+mkdir my-custom-agent && cd my-custom-agent
+uv init --python 3.11
+uv add fastapi uvicorn[standard] pydantic httpx strands-agents
+
+# Run the application
+uv run uvicorn agent:app --host 0.0.0.0 --port 8080
+
+# Test /ping endpoint
+curl http://localhost:8080/ping
+
+# Test /invocations endpoint
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {"prompt": "What is artificial intelligence?"}
+  }'
+================================================= AgentCore Hosting Code ======================================
+# Create ECR repository
+aws ecr create-repository --repository-name my-strands-agent --region us-west-2
+
+# Login to ECR
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 357171621133.dkr.ecr.us-west-2.amazonaws.com
+
+# Build and push to ECR
+docker buildx build --platform linux/arm64 -t 357171621133.dkr.ecr.us-west-2.amazonaws.com/my-strands-agent:latest --push .
+
+# Verify the image
+aws ecr describe-images --repository-name my-strands-agent --region us-west-2
+
+# Execute python file
+deploy_agent.py
+
+#Execute python file
+invoke_agent.py
